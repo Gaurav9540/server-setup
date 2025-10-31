@@ -7,7 +7,7 @@ echo "==========================================================================
 echo "Time: $(date)"
 echo
 
-MYSQL_ROOT_PASSWORD=""
+MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
 
 echo "[1/8] Updating Packages...."
