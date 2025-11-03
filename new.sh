@@ -1,90 +1,77 @@
 #!/bin/bash
 set -e
 
-# ========================== COLORS ==========================
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# ============================== COLORS ==============================
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+RED="\e[31m"
+CYAN="\e[36m"
+BOLD="\e[1m"
+RESET="\e[0m"
 
-# ========================== FAST DOTS ANIMATION ==========================
+# ============================== FUNCTIONS ==============================
 spinner() {
-    local pid=$1
-    local delay=0.2
-    local dots=("." ".." "..." "...." ".....")
+    local pid=$!
+    local spin='|/-\'
     local i=0
-    while ps -p $pid > /dev/null 2>&1; do
-        printf "\r${YELLOW}⏳ Please wait${dots[i]}${NC}"
-        ((i=(i+1)%5))
-        sleep $delay
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) %4 ))
+        printf "\r${CYAN}⏳ ${spin:$i:1} ${1}${RESET}"
+        sleep 0.2
     done
-    printf "\r${GREEN}✅ Done!             ${NC}\n"
+    printf "\r${GREEN}✅ ${1} completed.${RESET}\n"
 }
 
-# ========================== HEADER ==========================
-clear
-echo -e "${BLUE}${BOLD}========================================================================================${NC}"
-echo -e "${GREEN}${BOLD}SCRIPT STARTED: UBUNTU VPS SERVER SETUP${NC}"
-echo -e "${BLUE}${BOLD}========================================================================================${NC}"
-echo -e "${YELLOW}Time: $(date)${NC}\n"
+print_header() {
+    echo -e "${BOLD}${BLUE}"
+    echo "========================================================================================"
+    echo "SCRIPT STARTED: UBUNTU VPS SERVER SETUP"
+    echo "========================================================================================"
+    echo -e "${RESET}"
+    echo "Time: $(date)"
+    echo
+}
 
-# ========================== VARIABLES ==========================
+# ============================== START ==============================
+print_header
+
 MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
 
-# ========================== TASKS ==========================
+echo -e "${YELLOW}[1/8] Updating Packages...${RESET}"
+(sudo apt update -y && sudo apt upgrade -y) & spinner "System update"
 
-# [1/8] Updating Packages
-echo -e "${YELLOW}[1/8] Updating Packages...${NC}"
-(sudo apt update -y >/dev/null 2>&1 && sudo apt upgrade -y >/dev/null 2>&1) & pid=$!
-spinner $pid
-wait $pid
-echo -e "${GREEN}✅ Packages Updated.${NC}\n"
+echo -e "${YELLOW}[2/8] Installing JDK 17...${RESET}"
+(sudo apt install -y openjdk-17-jdk) & spinner "Installing JDK 17"
 
-# [2/8] Installing JDK 17
-echo -e "${YELLOW}[2/8] Installing JDK 17...${NC}"
-(sudo apt install -y openjdk-17-jdk >/dev/null 2>&1) & pid=$!
-spinner $pid
-wait $pid
-echo -e "${GREEN}✅ JDK 17 Installed.${NC}\n"
+echo -e "${YELLOW}[3/8] Verifying Java Installation...${RESET}"
+java --version | grep "openjdk" && echo -e "${GREEN}Java verified.${RESET}"
 
-# [3/8] Verifying Java Installation
-echo -e "${YELLOW}[3/8] Verifying Java Installation...${NC}"
-java --version
-echo
-
-# [4/8] Installing MySQL Server
-echo -e "${YELLOW}[4/8] Installing MySQL Server...${NC}"
-(sudo apt install -y mysql-server >/dev/null 2>&1) & pid=$!
-spinner $pid
-wait $pid
-echo -e "${GREEN}✅ MySQL Installed.${NC}"
+echo -e "${YELLOW}[4/8] Installing MySQL Server...${RESET}"
+(sudo apt install -y mysql-server) & spinner "Installing MySQL Server"
 
 sudo systemctl daemon-reload
 sudo systemctl enable mysql
 sudo systemctl start mysql
 
-echo "Waiting for MySQL service to fully start..."
+echo -e "${CYAN}Waiting for MySQL service to fully start...${RESET}"
 for i in {1..10}; do
     if sudo systemctl is-active --quiet mysql; then
-        echo -e "${GREEN}✅ MySQL service is active.${NC}"
+        echo -e "${GREEN}✅ MySQL service is active.${RESET}"
         break
     fi
-    echo -e "${YELLOW}⏳ Waiting... ($i)${NC}"
+    echo -e "${YELLOW}⏳ Waiting... ($i)${RESET}"
     sleep 3
 done
 
-# [5/8] Resetting MySQL Root Password
-echo -e "${YELLOW}[5/8] Resetting MySQL root password (secure method)...${NC}"
+echo -e "${YELLOW}[5/8] Resetting MySQL root password...${RESET}"
 sudo mysql <<EOF
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
 FLUSH PRIVILEGES;
 EOF
 
-# [6/8] Securing MySQL and Enabling Remote Access
-echo -e "${YELLOW}[6/8] Securing MySQL and enabling remote access...${NC}"
+echo -e "${YELLOW}[6/8] Securing MySQL and enabling remote access...${RESET}"
 sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
 DELETE FROM mysql.user WHERE User='';
 DROP DATABASE IF EXISTS test;
@@ -92,41 +79,36 @@ DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
 FLUSH PRIVILEGES;
 EOF
 
-# Update bind address
+# Remote access
 if sudo grep -q "^bind-address" /etc/mysql/mysql.conf.d/mysqld.cnf; then
     sudo sed -i "s/^bind-address.*/bind-address = ${BIND_ADDRESS}/" /etc/mysql/mysql.conf.d/mysqld.cnf
 else
-    echo "bind-address = ${BIND_ADDRESS}" | sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf >/dev/null
+    echo "bind-address = ${BIND_ADDRESS}" | sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf
 fi
-
 sudo systemctl restart mysql
 
-# Allow MySQL in firewall if UFW exists
 if command -v ufw &> /dev/null; then
     sudo ufw allow 3306 || true
 fi
 
-# [7/8] Cleaning up
-echo -e "${YELLOW}[7/8] Cleaning up unused packages...${NC}"
-(sudo apt autoremove -y >/dev/null 2>&1) & pid=$!
-spinner $pid
-wait $pid
-echo -e "${GREEN}✅ Cleanup Completed.${NC}\n"
+echo -e "${YELLOW}[7/8] Cleaning up...${RESET}"
+(sudo apt autoremove -y) & spinner "Cleanup"
 
-# [8/8] Verifying MySQL Root Login
-echo -e "${YELLOW}[8/8] Verifying MySQL root login...${NC}"
+echo -e "${YELLOW}[8/8] Verifying MySQL root login...${RESET}"
 if mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 'Login successful ✅' AS Status;" >/dev/null 2>&1; then
-    echo -e "${GREEN}✅ MySQL root login verified successfully.${NC}"
+    echo -e "${GREEN}✅ MySQL root login verified successfully.${RESET}"
 else
-    echo -e "${RED}❌ MySQL login test failed — please check manually.${NC}"
+    echo -e "${RED}❌ MySQL login test failed — please check manually.${RESET}"
 fi
 
-# ========================== FOOTER ==========================
+# ============================== COMPLETE ==============================
+echo -e "${BOLD}${BLUE}"
+echo "========================================================================================"
+echo "✅ SCRIPT COMPLETED: SERVER SETUP SUCCESSFUL"
+echo "========================================================================================"
+echo -e "${RESET}"
+echo "Time: $(date)"
 echo
-echo -e "${BLUE}${BOLD}========================================================================================${NC}"
-echo -e "${GREEN}${BOLD}✅ SCRIPT COMPLETED: SERVER SETUP SUCCESSFUL${NC}"
-echo -e "${BLUE}${BOLD}========================================================================================${NC}"
-echo -e "${YELLOW}Time: $(date)${NC}"
-echo -e "${YELLOW}MySQL root password:${NC} ${BOLD}${MYSQL_ROOT_PASSWORD}${NC}"
-echo -e "${YELLOW}Login using:${NC} ${BOLD}sudo mysql -u root -p${NC}"
-echo -e "${BLUE}${BOLD}========================================================================================${NC}\n"
+echo -e "${CYAN}MySQL root password:${RESET} ${BOLD}${MYSQL_ROOT_PASSWORD}${RESET}"
+echo -e "${CYAN}Login using:${RESET} ${BOLD}sudo mysql -u root -p${RESET}"
+echo -e "${BLUE}========================================================================================${RESET}"
