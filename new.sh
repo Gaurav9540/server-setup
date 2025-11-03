@@ -7,37 +7,64 @@ YELLOW="\e[33m"
 BLUE="\e[34m"
 RED="\e[31m"
 CYAN="\e[36m"
+MAGENTA="\e[35m"
 BOLD="\e[1m"
 RESET="\e[0m"
 
 # ============================== FUNCTIONS ==============================
+typewriter() {
+    text="$1"
+    delay="${2:-0.02}"
+    for (( i=0; i<${#text}; i++ )); do
+        printf "%s" "${text:$i:1}"
+        sleep "$delay"
+    done
+    echo
+}
+
 spinner() {
     local pid=$!
     local spin='|/-\'
     local i=0
     while kill -0 $pid 2>/dev/null; do
         i=$(( (i+1) %4 ))
-        printf "\r${CYAN}⏳ ${spin:$i:1} ${1}${RESET}"
-        sleep 0.2
+        printf "\r${CYAN}${spin:$i:1} ${1}..."
+        sleep 0.15
     done
     printf "\r${GREEN}✅ ${1} completed.${RESET}\n"
 }
 
+banner() {
+    echo -e "${MAGENTA}"
+    echo " ██████╗ ██╗   ██╗██████╗ ██╗   ██╗████████╗██╗   ██╗"
+    echo "██╔═══██╗██║   ██║██╔══██╗╚██╗ ██╔╝╚══██╔══╝╚██╗ ██╔╝"
+    echo "██║   ██║██║   ██║██████╔╝ ╚████╔╝    ██║    ╚████╔╝ "
+    echo "██║▄▄ ██║██║   ██║██╔══██╗  ╚██╔╝     ██║     ╚██╔╝  "
+    echo "╚██████╔╝╚██████╔╝██████╔╝   ██║      ██║      ██║   "
+    echo " ╚══▀▀═╝  ╚═════╝ ╚═════╝    ╚═╝      ╚═╝      ╚═╝   "
+    echo -e "${RESET}"
+}
+
 print_header() {
+    clear
+    banner
     echo -e "${BOLD}${BLUE}"
     echo "========================================================================================"
-    echo "SCRIPT STARTED: UBUNTU VPS SERVER SETUP"
+    echo " 🎬 UBUNTU VPS SERVER SETUP SCRIPT STARTED"
     echo "========================================================================================"
     echo -e "${RESET}"
     echo "Time: $(date)"
     echo
 }
 
-# ============================== START ==============================
+# ============================== SCRIPT START ==============================
 print_header
 
 MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
+
+typewriter "${YELLOW}Initializing environment...${RESET}" 0.03
+sleep 0.5
 
 echo -e "${YELLOW}[1/8] Updating Packages...${RESET}"
 (sudo apt update -y && sudo apt upgrade -y) & spinner "System update"
@@ -46,7 +73,7 @@ echo -e "${YELLOW}[2/8] Installing JDK 17...${RESET}"
 (sudo apt install -y openjdk-17-jdk) & spinner "Installing JDK 17"
 
 echo -e "${YELLOW}[3/8] Verifying Java Installation...${RESET}"
-java --version | grep "openjdk" && echo -e "${GREEN}Java verified.${RESET}"
+java --version | grep "openjdk" && echo -e "${GREEN}✅ Java verified.${RESET}"
 
 echo -e "${YELLOW}[4/8] Installing MySQL Server...${RESET}"
 (sudo apt install -y mysql-server) & spinner "Installing MySQL Server"
@@ -55,13 +82,13 @@ sudo systemctl daemon-reload
 sudo systemctl enable mysql
 sudo systemctl start mysql
 
-echo -e "${CYAN}Waiting for MySQL service to fully start...${RESET}"
+echo -e "${CYAN}⏳ Waiting for MySQL service to fully start...${RESET}"
 for i in {1..10}; do
     if sudo systemctl is-active --quiet mysql; then
         echo -e "${GREEN}✅ MySQL service is active.${RESET}"
         break
     fi
-    echo -e "${YELLOW}⏳ Waiting... ($i)${RESET}"
+    echo -e "${YELLOW}...starting ($i)${RESET}"
     sleep 3
 done
 
@@ -102,13 +129,18 @@ else
 fi
 
 # ============================== COMPLETE ==============================
+sleep 0.8
+echo
 echo -e "${BOLD}${BLUE}"
 echo "========================================================================================"
-echo "✅ SCRIPT COMPLETED: SERVER SETUP SUCCESSFUL"
+echo " 🎉 SETUP COMPLETE — YOUR SERVER IS READY!"
 echo "========================================================================================"
 echo -e "${RESET}"
-echo "Time: $(date)"
+typewriter "${GREEN}All services are running smoothly. System is now production-ready.${RESET}" 0.02
 echo
 echo -e "${CYAN}MySQL root password:${RESET} ${BOLD}${MYSQL_ROOT_PASSWORD}${RESET}"
 echo -e "${CYAN}Login using:${RESET} ${BOLD}sudo mysql -u root -p${RESET}"
+echo
 echo -e "${BLUE}========================================================================================${RESET}"
+typewriter "${MAGENTA}Thank you for using this automated setup! 🚀${RESET}" 0.03
+echo
