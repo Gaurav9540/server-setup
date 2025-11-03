@@ -11,17 +11,17 @@ echo
 MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
 
-echo "[1/9] Updating Packages..."
+echo "[1/8] Updating Packages..."
 sudo apt update -y
 sudo apt upgrade -y
 
-echo "[2/9] Installing JDK 17..."
+echo "[2/8] Installing JDK 17..."
 sudo apt install -y openjdk-17-jdk
 
-echo "[3/9] Verifying Java Installation..."
+echo "[3/8] Verifying Java Installation..."
 java --version
 
-echo "[4/9] Installing MySQL Server..."
+echo "[4/8] Installing MySQL Server..."
 sudo apt install -y mysql-server
 
 sudo systemctl daemon-reload
@@ -38,54 +38,14 @@ for i in {1..10}; do
     sleep 3
 done
 
-echo "[5/9] Ensuring MySQL socket directory exists..."
-sudo mkdir -p /run/mysqld
-sudo chown mysql:mysql /run/mysqld
-
-echo "[6/9] Resetting MySQL root password safely..."
-sudo systemctl stop mysql || true
-
-# Start mysqld manually as mysql user (safe mode)
-sudo -u mysql mysqld --skip-grant-tables --skip-networking --socket=/run/mysqld/mysqld.sock &
-MYSQL_PID=$!
-
-# Wait until socket file appears
-echo "⏳ Waiting for temporary MySQL to start..."
-for i in {1..15}; do
-    if [ -S /run/mysqld/mysqld.sock ]; then
-        echo "✅ Socket ready."
-        break
-    fi
-    sleep 2
-done
-
-# Now reset password
-mysql --socket=/run/mysqld/mysqld.sock -u root <<EOF
-FLUSH PRIVILEGES;
+echo "[5/8] Resetting MySQL root password (secure method)..."
+sudo mysql <<EOF
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
 FLUSH PRIVILEGES;
 EOF
 
-# Stop temporary MySQL process
-sudo kill $MYSQL_PID || true
-sleep 5
-
-echo "[7/9] Restarting MySQL normally..."
-sudo systemctl start mysql
-sudo systemctl enable mysql
-
-echo "Waiting for MySQL to restart..."
-for i in {1..10}; do
-    if sudo systemctl is-active --quiet mysql; then
-        echo "✅ MySQL restarted successfully."
-        break
-    fi
-    echo "⏳ Retrying... ($i)"
-    sleep 3
-done
-
-echo "[8/9] Securing MySQL and enabling remote access..."
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
+echo "[6/8] Securing MySQL and enabling remote access..."
+sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
 DELETE FROM mysql.user WHERE User='';
 DROP DATABASE IF EXISTS test;
 DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
@@ -107,8 +67,15 @@ then
     sudo ufw allow 3306 || true
 fi
 
-echo "[9/9] Cleaning up unused packages..."
+echo "[7/8] Cleaning up unused packages..."
 sudo apt autoremove -y
+
+echo "[8/8] Verifying MySQL root login..."
+if mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 'Login successful ✅' AS Status;" >/dev/null 2>&1; then
+    echo "✅ MySQL root login verified successfully."
+else
+    echo "❌ MySQL login test failed — please check manually."
+fi
 
 echo
 echo "========================================================================================"
