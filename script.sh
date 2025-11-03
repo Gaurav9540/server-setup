@@ -24,29 +24,55 @@ java --version
 echo "[4/9] Installing MySQL Server..."
 sudo apt install -y mysql-server
 
+# Force reload and enable service (fix for fresh VPS installs)
+sudo systemctl daemon-reload
+sudo systemctl enable mysql
+sudo systemctl start mysql
+
+# Wait until MySQL is up
+echo "Waiting for MySQL service to fully start..."
+for i in {1..10}; do
+    if sudo systemctl is-active --quiet mysql; then
+        echo "✅ MySQL service is active."
+        break
+    fi
+    echo "⏳ Waiting... ($i)"
+    sleep 3
+done
+
 echo "[5/9] Ensuring MySQL socket directory exists..."
 sudo mkdir -p /run/mysqld
 sudo chown mysql:mysql /run/mysqld
 
-echo "[6/9] Starting MySQL in skip-grant-tables mode to reset root password..."
+echo "[6/9] Resetting MySQL root password safely..."
 sudo systemctl stop mysql || true
 sudo mysqld --skip-grant-tables --skip-networking &
 sleep 8
 
-echo "[7/9] Resetting MySQL root password..."
 mysql -u root <<EOF
 FLUSH PRIVILEGES;
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
 FLUSH PRIVILEGES;
 EOF
 
-echo "[8/9] Restarting MySQL normally..."
+echo "[7/9] Restarting MySQL normally..."
 sudo killall mysqld || true
 sleep 5
-sudo systemctl start mysql
+sudo systemctl restart mysql
 sudo systemctl enable mysql
 
-echo "[9/9] Securing MySQL and enabling remote access..."
+# Wait again for MySQL to come online
+echo "Waiting for MySQL to restart..."
+for i in {1..10}; do
+    if sudo systemctl is-active --quiet mysql; then
+        echo "✅ MySQL restarted successfully."
+        break
+    fi
+    echo "⏳ Retrying... ($i)"
+    sleep 3
+done
+
+echo "[8/9] Securing MySQL and enabling remote access..."
 mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
 DELETE FROM mysql.user WHERE User='';
 DROP DATABASE IF EXISTS test;
@@ -69,7 +95,7 @@ then
     sudo ufw allow 3306 || true
 fi
 
-echo "Cleaning up unused packages..."
+echo "[9/9] Cleaning up unused packages..."
 sudo apt autoremove -y
 
 echo
