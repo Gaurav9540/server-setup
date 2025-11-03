@@ -11,13 +11,13 @@ NC='\033[0m' # No Color
 
 # ========================== SPINNER FUNCTION ==========================
 spinner() {
-    local pid=$!
+    local pid=$1
     local delay=0.1
     local spinstr='|/-\'
     while ps -p $pid > /dev/null 2>&1; do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
+        spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b\b"
     done
@@ -36,20 +36,31 @@ MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
 
 # ========================== TASKS ==========================
+
+# [1/8] Updating Packages
 echo -e "${YELLOW}[1/8] Updating Packages...${NC}"
-(sudo apt update -y >/dev/null 2>&1 && sudo apt upgrade -y >/dev/null 2>&1) & spinner
+(sudo apt update -y >/dev/null 2>&1 && sudo apt upgrade -y >/dev/null 2>&1) & pid=$!
+spinner $pid
+wait $pid
 echo -e "${GREEN}✅ Packages Updated.${NC}\n"
 
+# [2/8] Installing JDK 17
 echo -e "${YELLOW}[2/8] Installing JDK 17...${NC}"
-(sudo apt install -y openjdk-17-jdk >/dev/null 2>&1) & spinner
+(sudo apt install -y openjdk-17-jdk >/dev/null 2>&1) & pid=$!
+spinner $pid
+wait $pid
 echo -e "${GREEN}✅ JDK 17 Installed.${NC}\n"
 
+# [3/8] Verifying Java Installation
 echo -e "${YELLOW}[3/8] Verifying Java Installation...${NC}"
 java --version
 echo
 
+# [4/8] Installing MySQL Server
 echo -e "${YELLOW}[4/8] Installing MySQL Server...${NC}"
-(sudo apt install -y mysql-server >/dev/null 2>&1) & spinner
+(sudo apt install -y mysql-server >/dev/null 2>&1) & pid=$!
+spinner $pid
+wait $pid
 echo -e "${GREEN}✅ MySQL Installed.${NC}"
 
 sudo systemctl daemon-reload
@@ -66,12 +77,14 @@ for i in {1..10}; do
     sleep 3
 done
 
+# [5/8] Resetting MySQL Root Password
 echo -e "${YELLOW}[5/8] Resetting MySQL root password (secure method)...${NC}"
 sudo mysql <<EOF
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
 FLUSH PRIVILEGES;
 EOF
 
+# [6/8] Securing MySQL and Enabling Remote Access
 echo -e "${YELLOW}[6/8] Securing MySQL and enabling remote access...${NC}"
 sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
 DELETE FROM mysql.user WHERE User='';
@@ -80,11 +93,11 @@ DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
 FLUSH PRIVILEGES;
 EOF
 
-# Allow remote access
+# Update bind address
 if sudo grep -q "^bind-address" /etc/mysql/mysql.conf.d/mysqld.cnf; then
     sudo sed -i "s/^bind-address.*/bind-address = ${BIND_ADDRESS}/" /etc/mysql/mysql.conf.d/mysqld.cnf
 else
-    echo "bind-address = ${BIND_ADDRESS}" | sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf
+    echo "bind-address = ${BIND_ADDRESS}" | sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf >/dev/null
 fi
 
 sudo systemctl restart mysql
@@ -94,10 +107,14 @@ if command -v ufw &> /dev/null; then
     sudo ufw allow 3306 || true
 fi
 
+# [7/8] Cleaning up
 echo -e "${YELLOW}[7/8] Cleaning up unused packages...${NC}"
-(sudo apt autoremove -y >/dev/null 2>&1) & spinner
+(sudo apt autoremove -y >/dev/null 2>&1) & pid=$!
+spinner $pid
+wait $pid
 echo -e "${GREEN}✅ Cleanup Completed.${NC}\n"
 
+# [8/8] Verifying MySQL Root Login
 echo -e "${YELLOW}[8/8] Verifying MySQL root login...${NC}"
 if mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 'Login successful ✅' AS Status;" >/dev/null 2>&1; then
     echo -e "${GREEN}✅ MySQL root login verified successfully.${NC}"
