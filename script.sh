@@ -24,12 +24,10 @@ java --version
 echo "[4/9] Installing MySQL Server..."
 sudo apt install -y mysql-server
 
-# Force reload and enable service (fix for fresh VPS installs)
 sudo systemctl daemon-reload
 sudo systemctl enable mysql
 sudo systemctl start mysql
 
-# Wait until MySQL is up
 echo "Waiting for MySQL service to fully start..."
 for i in {1..10}; do
     if sudo systemctl is-active --quiet mysql; then
@@ -46,22 +44,36 @@ sudo chown mysql:mysql /run/mysqld
 
 echo "[6/9] Resetting MySQL root password safely..."
 sudo systemctl stop mysql || true
-sudo mysqld --skip-grant-tables --skip-networking &
-sleep 8
 
-mysql -u root <<EOF
+# Start mysqld manually as mysql user (safe mode)
+sudo -u mysql mysqld --skip-grant-tables --skip-networking --socket=/run/mysqld/mysqld.sock &
+MYSQL_PID=$!
+
+# Wait until socket file appears
+echo "⏳ Waiting for temporary MySQL to start..."
+for i in {1..15}; do
+    if [ -S /run/mysqld/mysqld.sock ]; then
+        echo "✅ Socket ready."
+        break
+    fi
+    sleep 2
+done
+
+# Now reset password
+mysql --socket=/run/mysqld/mysqld.sock -u root <<EOF
 FLUSH PRIVILEGES;
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
 FLUSH PRIVILEGES;
 EOF
 
-echo "[7/9] Restarting MySQL normally..."
-sudo killall mysqld || true
+# Stop temporary MySQL process
+sudo kill $MYSQL_PID || true
 sleep 5
-sudo systemctl restart mysql
+
+echo "[7/9] Restarting MySQL normally..."
+sudo systemctl start mysql
 sudo systemctl enable mysql
 
-# Wait again for MySQL to come online
 echo "Waiting for MySQL to restart..."
 for i in {1..10}; do
     if sudo systemctl is-active --quiet mysql; then
