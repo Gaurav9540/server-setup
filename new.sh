@@ -9,19 +9,18 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# ========================== SPINNER FUNCTION ==========================
+# ========================== FAST DOTS ANIMATION ==========================
 spinner() {
     local pid=$1
-    local delay=0.1
-    local spinstr='|/-\'
+    local delay=0.2
+    local dots=("." ".." "..." "...." ".....")
+    local i=0
     while ps -p $pid > /dev/null 2>&1; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        spinstr=$temp${spinstr%"$temp"}
+        printf "\r${YELLOW}⏳ Please wait${dots[i]}${NC}"
+        ((i=(i+1)%5))
         sleep $delay
-        printf "\b\b\b\b\b\b"
     done
-    printf "     \b\b\b\b\b"
+    printf "\r${GREEN}✅ Done!             ${NC}\n"
 }
 
 # ========================== HEADER ==========================
