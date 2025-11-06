@@ -34,8 +34,26 @@ print_header() {
     echo
 }
 
+confirm_execution() {
+    echo -e "${YELLOW}========================================================================================${RESET}"
+    echo -e "${RED}${BOLD}⚠️  WARNING:${RESET} This script will completely uninstall MySQL, JDK 17, and related data."
+    echo -e "${YELLOW}========================================================================================${RESET}"
+    echo
+    read -p "Are you sure you want to continue? (yes/no): " CONFIRM
+
+    if [[ "$CONFIRM" != "yes" ]]; then
+        echo -e "${RED}❌ Operation cancelled by user.${RESET}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ Confirmation received. Continuing...${RESET}"
+    echo
+    sleep 1
+}
+
 # ============================== SCRIPT START ==============================
 print_header
+confirm_execution   # <--- Added here
 
 MYSQL_CONF="/etc/mysql/mysql.conf.d/mysqld.cnf"
 
