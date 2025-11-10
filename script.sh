@@ -103,6 +103,20 @@ else
     echo -e "${RED}❌ MySQL login test failed — please check manually.${RESET}"
 fi
 
+# ============================== DATABASE CREATION ==============================
+echo -e "${YELLOW}[9/9] Creating database '${DB_NAME}'...${RESET}"
+sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
+CREATE DATABASE IF NOT EXISTS ${DB_NAME};
+USE ${DB_NAME};
+CREATE TABLE IF NOT EXISTS sample_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SHOW DATABASES;
+EOF
+echo -e "${GREEN}✅ Database '${DB_NAME}' created and selected successfully.${RESET}"
+
 # ============================== COMPLETION ==============================
 echo
 echo -e "${BOLD}${BLUE}"
@@ -113,5 +127,7 @@ echo -e "${RESET}"
 echo "Time: $(date)"
 echo
 echo -e "${CYAN}MySQL root password:${RESET} ${BOLD}${MYSQL_ROOT_PASSWORD}${RESET}"
+echo -e "${CYAN}Created database:${RESET} ${BOLD}${DB_NAME}${RESET}"
 echo -e "${CYAN}Login using:${RESET} ${BOLD}sudo mysql -u root -p${RESET}"
+echo -e "${CYAN}Then switch with:${RESET} ${BOLD}USE ${DB_NAME};${RESET}"
 echo -e "${BLUE}========================================================================================${RESET}"
