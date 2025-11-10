@@ -39,7 +39,7 @@ print_header
 
 MYSQL_ROOT_PASSWORD="GTasterix@007"
 BIND_ADDRESS="0.0.0.0"
-DB_NAME="GTASTERIX"
+# DB_NAME="GTASTERIX"
 
 echo -e "${YELLOW}[1/8] Updating Packages...${RESET}"
 (sudo apt update -y && sudo apt upgrade -y) & spinner "System update"
@@ -106,18 +106,18 @@ fi
 
 # ============================== DATABASE CREATION ==============================
 
-echo -e "${YELLOW}[9/9] Creating database '${DB_NAME}'...${RESET}"
-sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
-USE \`${DB_NAME}\`;
-CREATE TABLE IF NOT EXISTS sample_table (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-SHOW DATABASES;
-EOF
-echo -e "${GREEN}✅ Database '${DB_NAME}' created and selected successfully.${RESET}"
+# echo -e "${YELLOW}[9/9] Creating database '${DB_NAME}'...${RESET}"
+# sudo mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
+# CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+# USE \`${DB_NAME}\`;
+# CREATE TABLE IF NOT EXISTS sample_table (
+#     id INT AUTO_INCREMENT PRIMARY KEY,
+#     name VARCHAR(100) NOT NULL,
+#     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+# );
+# SHOW DATABASES;
+# EOF
+# echo -e "${GREEN}✅ Database '${DB_NAME}' created and selected successfully.${RESET}"
 
 # ============================== COMPLETION ==============================
 echo
