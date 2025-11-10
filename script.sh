@@ -128,8 +128,8 @@ echo "==========================================================================
 echo -e "${RESET}"
 echo "Time: $(date)"
 echo
-echo -e "${CYAN}MySQL root password:${RESET} ${BOLD}${MYSQL_ROOT_PASSWORD}${RESET}"
-echo -e "${CYAN}Created database:${RESET} ${BOLD}${DB_NAME}${RESET}"
 echo -e "${CYAN}Login using:${RESET} ${BOLD}sudo mysql -u root -p${RESET}"
-echo -e "${CYAN}Then switch with:${RESET} ${BOLD}USE ${DB_NAME};${RESET}"
+echo -e "${CYAN}MySQL root password:${RESET} ${BOLD}${MYSQL_ROOT_PASSWORD}${RESET}"
+# echo -e "${CYAN}Created database:${RESET} ${BOLD}${DB_NAME}${RESET}"
+# echo -e "${CYAN}Then switch with:${RESET} ${BOLD}USE ${DB_NAME};${RESET}"
 echo -e "${BLUE}========================================================================================${RESET}"
